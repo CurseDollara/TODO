@@ -8,19 +8,24 @@ class AddTaskPage extends StatefulWidget {
 }
 
 class _AddTaskPageState extends State<AddTaskPage> {
+  // Контроллеры для ввода названия задачи и заметок
   final TextEditingController _taskTitleController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
+
+  // Переменные для хранения выбранных категории, даты и времени
   String _selectedCategory = 'Дом';
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
 
   @override
   void dispose() {
+    // Освобождаем ресурсы контроллеров при удалении виджета
     _taskTitleController.dispose();
     _notesController.dispose();
     super.dispose();
   }
 
+  // Выбор даты через диалоговое окно
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -35,6 +40,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
     }
   }
 
+  // Выбор времени через диалоговое окно
   Future<void> _selectTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -47,6 +53,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
     }
   }
 
+  // Сохранение задачи и возврат к предыдущему экрану с передачей данных
   void _saveTask() {
     Navigator.pop(context, {
       'title': _taskTitleController.text,
@@ -68,6 +75,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Поле для ввода названия задачи
             TextField(
               controller: _taskTitleController,
               decoration: const InputDecoration(
@@ -75,6 +83,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
               ),
             ),
             const SizedBox(height: 16),
+            // Выбор категории задачи
             const Text(
               'Выбор категории:',
               style: TextStyle(fontSize: 16),
@@ -96,6 +105,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
               }).toList(),
             ),
             const SizedBox(height: 16),
+            // Выбор даты выполнения задачи
             Row(
               children: [
                 Expanded(
@@ -111,6 +121,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                 ),
               ],
             ),
+            // Выбор времени выполнения задачи
             Row(
               children: [
                 Expanded(
@@ -127,6 +138,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
               ],
             ),
             const SizedBox(height: 16),
+            // Поле для ввода заметок
             TextField(
               controller: _notesController,
               decoration: const InputDecoration(
@@ -135,6 +147,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
               maxLines: 3,
             ),
             const SizedBox(height: 20),
+            // Кнопка сохранения задачи
             ElevatedButton(
               onPressed: _saveTask,
               child: const Text('Сохранить задачу'),

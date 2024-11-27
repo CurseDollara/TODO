@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'add_task.dart';
+import '../components/colors.dart';
+import '../components/task.dart';
+
 
 class DailyTask extends StatefulWidget {
   const DailyTask({super.key});
 
   @override
-  _DailyTaskState createState() => _DailyTaskState();
+  DailyTaskState createState() => DailyTaskState();
 }
 
-class _DailyTaskState extends State<DailyTask> {
+class DailyTaskState extends State<DailyTask> {
   List<Task> currentTasks = [];
   List<Task> completedTasks = [];
   final TextEditingController _taskController = TextEditingController();
@@ -19,13 +22,20 @@ class _DailyTaskState extends State<DailyTask> {
     super.dispose();
   }
 
-  void _addTask(String taskTitle, DateTime? taskDate) {
-    if (taskTitle.trim().isEmpty) return;
-    setState(() {
-      currentTasks.add(Task(title: taskTitle, date: taskDate));
-    });
-    _taskController.clear();
-  }
+void _addTask(String taskTitle, DateTime? taskDate, TimeOfDay? taskTime, String? taskNotes) {
+  if (taskTitle.trim().isEmpty) return;
+  setState(() {
+    currentTasks.add(Task(
+      title: taskTitle,
+      date: taskDate,
+      time: taskTime,
+      notes: taskNotes,
+    ));
+  });
+  _taskController.clear();
+}
+
+
 
   void _toggleTask(Task task, bool? isCompleted) {
     setState(() {
@@ -49,16 +59,22 @@ class _DailyTaskState extends State<DailyTask> {
     });
   }
 
-  Future<void> _navigateToAddTaskPage() async {
-    final newTask = await Navigator.push<Map<String, dynamic>>(
-      context,
-      MaterialPageRoute(builder: (context) => const AddTaskPage()),
-    );
+Future<void> _navigateToAddTaskPage() async {
+  final newTask = await Navigator.push<Map<String, dynamic>>(
+    context,
+    MaterialPageRoute(builder: (context) => const AddTaskPage()),
+  );
 
-    if (newTask != null) {
-      _addTask(newTask['title'], newTask['date']);
-    }
+  if (newTask != null) {
+    _addTask(
+      newTask['title'],
+      newTask['date'],
+      newTask['time'],
+      newTask['notes'],
+    );
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -70,19 +86,18 @@ class _DailyTaskState extends State<DailyTask> {
           Container(
             height: screenHeight * 0.3,
             width: double.infinity,
-            color: const Color(0xFF4A3780),
+            color: AppColors.primary,
             child: Center(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4A3780),
+                  color: AppColors.primary,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Text(
                   'My Todo List',
                   style: TextStyle(
-                    color: Color.fromARGB(255, 255, 255, 255),
+                    color: AppColors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
@@ -92,7 +107,7 @@ class _DailyTaskState extends State<DailyTask> {
           ),
           Expanded(
             child: Container(
-              color: Colors.white,
+              color: AppColors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               child: SingleChildScrollView(
                 child: Column(
@@ -102,7 +117,7 @@ class _DailyTaskState extends State<DailyTask> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE0E0E0),
+                          color: AppColors.lightGrey,
                           borderRadius: BorderRadius.circular(15),
                         ),
                         child: Column(
@@ -120,8 +135,7 @@ class _DailyTaskState extends State<DailyTask> {
                                   task: task,
                                   onChanged: (isChecked) =>
                                       _toggleTask(task, isChecked),
-                                  onDelete: () =>
-                                      _deleteTask(task, false),
+                                  onDelete: () => _deleteTask(task, false),
                                 )),
                           ],
                         ),
@@ -132,7 +146,7 @@ class _DailyTaskState extends State<DailyTask> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE0E0E0),
+                          color: AppColors.lightGrey,
                           borderRadius: BorderRadius.circular(15),
                         ),
                         child: Column(
@@ -150,8 +164,7 @@ class _DailyTaskState extends State<DailyTask> {
                                   task: task,
                                   onChanged: (isChecked) =>
                                       _toggleTask(task, isChecked),
-                                  onDelete: () =>
-                                      _deleteTask(task, true),
+                                  onDelete: () => _deleteTask(task, true),
                                 )),
                           ],
                         ),
@@ -163,13 +176,12 @@ class _DailyTaskState extends State<DailyTask> {
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            color: Colors.white,
+            color: AppColors.white,
             child: ElevatedButton(
               onPressed: _navigateToAddTaskPage,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4A3780),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 15),
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -178,7 +190,7 @@ class _DailyTaskState extends State<DailyTask> {
                 'Добавить новую задачу',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.white,
+                  color: AppColors.white,
                 ),
               ),
             ),
@@ -187,14 +199,6 @@ class _DailyTaskState extends State<DailyTask> {
       ),
     );
   }
-}
-
-class Task {
-  String title;
-  bool isCompleted;
-  DateTime? date;
-
-  Task({required this.title, this.isCompleted = false, this.date});
 }
 
 class TaskItem extends StatelessWidget {
@@ -208,6 +212,45 @@ class TaskItem extends StatelessWidget {
     required this.onChanged,
     required this.onDelete,
   });
+
+  void _showTaskDetails(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(task.title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (task.date != null)
+                Text(
+                  'Дата: ${task.date!.day.toString().padLeft(2, '0')}-${task.date!.month.toString().padLeft(2, '0')}-${task.date!.year}',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              if (task.time != null)
+                Text(
+                  'Время: ${task.time!.hour}:${task.time!.minute.toString().padLeft(2, '0')}',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              const SizedBox(height: 10),
+              if (task.notes != null && task.notes!.isNotEmpty)
+                Text(
+                  'Заметки: ${task.notes!}',
+                  style: const TextStyle(fontSize: 16),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Закрыть'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -223,35 +266,46 @@ class TaskItem extends StatelessWidget {
                 child: Checkbox(
                   value: task.isCompleted,
                   onChanged: onChanged,
-                  activeColor: const Color(0xFF4A3780),
+                  activeColor: AppColors.primary,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  task.title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: task.isCompleted
-                        ? Colors.grey.withOpacity(0.6)
-                        : const Color.fromARGB(255, 97, 97, 97),
-                    decoration:
-                        task.isCompleted ? TextDecoration.lineThrough : null,
+                child: GestureDetector(
+                  onTap: () => _showTaskDetails(context),
+                  child: Text(
+                    task.title,
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: task.isCompleted
+                          ? AppColors.textGrey.withOpacity(0.6)
+                          : AppColors.textGrey,
+                      decoration:
+                          task.isCompleted ? TextDecoration.lineThrough : null,
+                    ),
                   ),
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
+                icon: const Icon(Icons.delete, color: AppColors.red),
                 onPressed: onDelete,
               ),
             ],
           ),
           if (task.date != null)
             Text(
-              'Дата: ${task.date!.toLocal()}'.split(' ')[0],
+              'Дата: ${task.date!.day.toString().padLeft(2, '0')}-${task.date!.month.toString().padLeft(2, '0')}-${task.date!.year}',
               style: const TextStyle(
                 fontSize: 14,
-                color: Color.fromARGB(255, 97, 97, 97),
+                color: AppColors.textGrey,
+              ),
+            ),
+          if (task.time != null)
+            Text(
+              'Время: ${task.time!.hour}:${task.time!.minute.toString().padLeft(2, '0')}',
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textGrey,
               ),
             ),
         ],

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'add_task.dart';
 import '../components/colors.dart';
 import '../components/task.dart';
-
+import '../widgets/auth_page.dart';
 
 class DailyTask extends StatefulWidget {
   const DailyTask({super.key});
@@ -15,27 +16,48 @@ class DailyTaskState extends State<DailyTask> {
   List<Task> currentTasks = [];
   List<Task> completedTasks = [];
   final TextEditingController _taskController = TextEditingController();
+  
+  String _username = '';
+  String _email = '';
 
   @override
-  void dispose() {
-    _taskController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadUserData(); 
   }
 
-void _addTask(String taskTitle, DateTime? taskDate, TimeOfDay? taskTime, String? taskNotes) {
-  if (taskTitle.trim().isEmpty) return;
-  setState(() {
-    currentTasks.add(Task(
-      title: taskTitle,
-      date: taskDate,
-      time: taskTime,
-      notes: taskNotes,
-    ));
-  });
-  _taskController.clear();
-}
+  Future<void> _loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _username = prefs.getString('username') ?? 'Пользователь';
+      _email = prefs.getString('email') ?? '';
+    });
+  }
 
+  // Выход из аккаунта
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear(); // Очищаем все сохраненные данные
+    
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const AuthPage()),
+    );
+  }
 
+  void _addTask(String taskTitle, DateTime? taskDate, TimeOfDay? taskTime, String? taskNotes) {
+    if (taskTitle.trim().isEmpty) return;
+    setState(() {
+      currentTasks.add(Task(
+        title: taskTitle,
+        date: taskDate,
+        time: taskTime,
+        notes: taskNotes,
+      ));
+    });
+    _taskController.clear();
+  }
 
   void _toggleTask(Task task, bool? isCompleted) {
     setState(() {
@@ -59,22 +81,21 @@ void _addTask(String taskTitle, DateTime? taskDate, TimeOfDay? taskTime, String?
     });
   }
 
-Future<void> _navigateToAddTaskPage() async {
-  final newTask = await Navigator.push<Map<String, dynamic>>(
-    context,
-    MaterialPageRoute(builder: (context) => const AddTaskPage()),
-  );
-
-  if (newTask != null) {
-    _addTask(
-      newTask['title'],
-      newTask['date'],
-      newTask['time'],
-      newTask['notes'],
+  Future<void> _navigateToAddTaskPage() async {
+    final newTask = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(builder: (context) => const AddTaskPage()),
     );
-  }
-}
 
+    if (newTask != null) {
+      _addTask(
+        newTask['title'],
+        newTask['date'],
+        newTask['time'],
+        newTask['notes'],
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,24 +108,75 @@ Future<void> _navigateToAddTaskPage() async {
             height: screenHeight * 0.3,
             width: double.infinity,
             color: AppColors.primary,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Text(
-                  'My Todo List',
-                  style: TextStyle(
-                    color: AppColors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Привет, $_username!',
+                              style: const TextStyle(
+                                color: AppColors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (_email.isNotEmpty)
+                              Text(
+                                _email,
+                                style: const TextStyle(
+                                  color: AppColors.white,
+                                  fontSize: 14,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.logout,
+                          color: AppColors.white,
+                          size: 28,
+                        ),
+                        onPressed: _logout,
+                        tooltip: 'Выйти',
+                      ),
+                    ],
                   ),
-                ),
+                  
+                  const SizedBox(height: 30),
+                  
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text(
+                        'My Todo List',
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+          
           Expanded(
             child: Container(
               color: AppColors.white,
@@ -169,11 +241,42 @@ Future<void> _navigateToAddTaskPage() async {
                           ],
                         ),
                       ),
+                      
+                    if (currentTasks.isEmpty && completedTasks.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(40),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.checklist,
+                              size: 80,
+                              color: AppColors.primary.withOpacity(0.3),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Пока нет задач',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: AppColors.textGrey.withOpacity(0.6),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Нажмите "Добавить новую задачу"',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.textGrey.withOpacity(0.5),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
             ),
           ),
+          
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             color: AppColors.white,

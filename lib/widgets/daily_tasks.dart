@@ -4,6 +4,7 @@ import 'add_task.dart';
 import '../components/colors.dart';
 import '../components/task.dart';
 import '../widgets/auth_page.dart';
+import '../services/api_service.dart';
 
 class DailyTask extends StatefulWidget {
   const DailyTask({super.key});
@@ -23,7 +24,49 @@ class DailyTaskState extends State<DailyTask> {
   @override
   void initState() {
     super.initState();
-    _loadUserData(); 
+    _loadUserData();
+    _loadTasks();
+  }
+
+  Future<void> _loadTasks() async {
+    try {
+      final result = await ApiService.getTasks();
+      if (result['success'] == true) {
+        final tasks = result['tasks'] as List;
+        
+        setState(() {
+          currentTasks.clear();
+          completedTasks.clear();
+          
+          for (var taskData in tasks) {
+            final task = Task(
+              id: taskData['_id'],
+              title: taskData['title'],
+              category: taskData['category'] ?? 'Дом',
+              isCompleted: taskData['completed'] ?? false,
+              date: taskData['date'] != null 
+                  ? DateTime.parse(taskData['date']) 
+                  : null,
+              time: taskData['time'] != null 
+                  ? TimeOfDay(
+                      hour: int.parse(taskData['time'].split(':')[0]),
+                      minute: int.parse(taskData['time'].split(':')[1]),
+                    )
+                  : null,
+              notes: taskData['notes'],
+            );
+            
+            if (task.isCompleted) {
+              completedTasks.add(task);
+            } else {
+              currentTasks.add(task);
+            }
+          }
+        });
+      }
+    } catch (e) {
+      print('Ошибка загрузки задач: $e');
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -46,22 +89,54 @@ class DailyTaskState extends State<DailyTask> {
     );
   }
 
-  void _addTask(String taskTitle, DateTime? taskDate, TimeOfDay? taskTime, String? taskNotes) {
+  void _addTask(String taskTitle, DateTime? taskDate, TimeOfDay? taskTime, String? taskNotes) async {
     if (taskTitle.trim().isEmpty) return;
+    
+    // Получаем данные текущего пользователя
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('user_id');
+    
+    // Создаем задачу локально
+    final newTask = Task(
+      title: taskTitle,
+      date: taskDate,
+      time: taskTime,
+      notes: taskNotes,
+    );
+    
     setState(() {
-      currentTasks.add(Task(
-        title: taskTitle,
-        date: taskDate,
-        time: taskTime,
-        notes: taskNotes,
-      ));
+      currentTasks.add(newTask);
     });
+    
+    // Сохраняем задачу в бэкенд
+    final taskData = {
+      'title': taskTitle,
+      'date': taskDate != null 
+          ? '${taskDate.year}-${taskDate.month.toString().padLeft(2, '0')}-${taskDate.day.toString().padLeft(2, '0')}'
+          : null,
+      'time': taskTime != null
+          ? '${taskTime.hour}:${taskTime.minute.toString().padLeft(2, '0')}'
+          : null,
+      'notes': taskNotes,
+    };
+    
+    final result = await ApiService.createTask(taskData);
+    
+    if (result['success'] == true) {
+      // Обновляем ID задачи из ответа сервера
+      setState(() {
+        newTask.id = result['task_id'];
+      });
+    }
+    
     _taskController.clear();
   }
 
-  void _toggleTask(Task task, bool? isCompleted) {
+  void _toggleTask(Task task, bool? isCompleted) async {
+    final newIsCompleted = isCompleted ?? !task.isCompleted;
+    
     setState(() {
-      if (isCompleted == true) {
+      if (newIsCompleted == true) {
         currentTasks.remove(task);
         completedTasks.add(task..isCompleted = true);
       } else {
@@ -69,16 +144,130 @@ class DailyTaskState extends State<DailyTask> {
         currentTasks.add(task..isCompleted = false);
       }
     });
+
+    if (task.id != null && task.id!.isNotEmpty) {
+      try {
+        final result = await ApiService.updateTask(
+          task.id!,
+          {'completed': newIsCompleted},
+        );
+        
+        if (!result['success']) {
+          print('Ошибка обновления задачи: ${result['error']}');
+        }
+      } catch (e) {
+        print('Ошибка сети: $e');
+      }
+    }
   }
 
-  void _deleteTask(Task task, bool isCompleted) {
-    setState(() {
-      if (isCompleted) {
-        completedTasks.remove(task);
-      } else {
-        currentTasks.remove(task);
+  void _deleteTask(Task task, bool isCompleted) async {
+    // Показываем диалог подтверждения
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Удалить задачу?',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Вы уверены, что хотите удалить задачу:',
+              style: TextStyle(
+                color: AppColors.textGrey,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.lightGrey,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '"${task.title}"',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Это действие нельзя отменить.',
+              style: TextStyle(
+                color: AppColors.red.withOpacity(0.8),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              'Отмена',
+              style: TextStyle(color: AppColors.textGrey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Удалить'),
+          ),
+        ],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        elevation: 10,
+      ),
+    );
+
+    // Если пользователь подтвердил удаление
+    if (confirm == true) {
+      setState(() {
+        if (isCompleted) {
+          completedTasks.remove(task);
+        } else {
+          currentTasks.remove(task);
+        }
+      });
+
+      if (task.id != null && task.id!.isNotEmpty) {
+        final result = await ApiService.deleteTask(task.id!);
+        if (!result['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result['error'] ?? 'Ошибка удаления из сервера',
+                style: const TextStyle(color: Colors.white),
+              ),
+              backgroundColor: AppColors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       }
-    });
+
+      // Показываем подтверждение удаления
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Задача "${task.title}" удалена',
+            style: const TextStyle(color: Colors.white),
+          ),
+          backgroundColor: AppColors.primary,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   Future<void> _navigateToAddTaskPage() async {
@@ -368,7 +557,9 @@ class TaskItem extends StatelessWidget {
                 scale: 1.5,
                 child: Checkbox(
                   value: task.isCompleted,
-                  onChanged: onChanged,
+                  onChanged: (isChecked) {
+                    onChanged(isChecked);
+                  },
                   activeColor: AppColors.primary,
                 ),
               ),

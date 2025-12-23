@@ -6,6 +6,8 @@ class Task {
   DateTime? date;
   TimeOfDay? time;
   String? notes;
+  String? id;
+  String? category;
 
   Task({
     required this.title,
@@ -13,6 +15,8 @@ class Task {
     this.date,
     this.time,
     this.notes,
+    this.id,
+    this.category = 'Дом',
   });
 }
 

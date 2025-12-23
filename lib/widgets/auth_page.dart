@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'daily_tasks.dart';
 import '../components/colors.dart';
-import '../services/api_service.dart';  // Импортируем наш сервис
+import '../services/api_service.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -33,16 +33,6 @@ class AuthPageState extends State<AuthPage> {
     final password = _passwordController.text.trim();
     final name = _nameController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
-
-    // Проверка сервера
-    final serverAvailable = await ApiService.checkServer();
-    if (!serverAvailable) {
-      setState(() {
-        _errorMessage = 'Сервер недоступен. Запустите backend сервер';
-        _isLoading = false;
-      });
-      return;
-    }
 
     // Валидация
     if (email.isEmpty || password.isEmpty) {
